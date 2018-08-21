@@ -45,6 +45,10 @@ function HelloWorld(props) {
           page has old data.)
         </Text>
         <TextInput settingsKey="url" label="eg. https://name.herokuapp.com" type="text" />
+        <Text>If you are using a Nightscout token, you can configure that here.  If you
+          don't have a token or don't know what this is about, then just leave it blank.
+        </Text>
+        <TextInput settingsKey="token" label="eg. name-123456789ABCDEF" type="text" />
         <Text>Minimum update interval.  The watch face will automatically calculate the best
           update interval.  This minimum value is intended for use by a secondary person who may want to
           monitor with less frequent updates, such as 10.</Text>
@@ -57,8 +61,10 @@ function HelloWorld(props) {
           fetch new information regularly regardless.
         When a BG low or high alarm occurs, it may be suppressed for various time periods
         (see below).</Text>
+        <TextInput settingsKey="urgentLow" label="BG Urgent Low limit" type="text" />
         <TextInput settingsKey="low" label="BG Low limit" type="text" />
         <TextInput settingsKey="high" label="BG High limit" type="text" />
+        <TextInput settingsKey="urgentHigh" label="BG Urgent High limit" type="text" />
         <Text>Settings for receiving a BG warning if the change in values between fetches
           is bigger than a configured amount.
           This can provide additional early warning for rapid rise of fall of BG values.</Text>
@@ -75,6 +81,14 @@ function HelloWorld(props) {
         <Text>This configuration allows the BG number, in the lower-left corner, to be made
           bigger, for better visibility.</Text>
         <TextInput label="Font size for BG number" settingsKey="bgFont1" type="text" />
+        <Text>The following colors may be used in order change the color of the BG number under
+          the circumstances mentioned.  This may allow the range to be more quickly determined,
+          especially if sight is hampered by blurriness (such as in the morning).</Text>
+      <TextInput label="Urgent Low Color" settingsKey="urgentLowColor" type="text"/>
+      <TextInput label="Low Color" settingsKey="lowColor" type="text"/>
+      <TextInput label="In Range Color" settingsKey="inRangeColor" type="text"/>
+      <TextInput label="High Color" settingsKey="highColor" type="text"/>
+      <TextInput label="Urgent High Color" settingsKey="urgentHighColor" type="text"/>
         <Text>This configuration suppresses vibration notifications, for minor events and for
           communication channel loss, during a period, such as sleep time.
           (Note that if communication between the watch and the phone is lost and can not be
@@ -84,6 +98,7 @@ function HelloWorld(props) {
           (Setting the end time to 1 minutes before the start time,
           will result in effectively disabling all extra warnings pretty much all of the time.)
         </Text>
+        
         <TextInput settingsKey="warn-start" label="Quiet Start HH:MM (24hr)" type="text" />
         <TextInput settingsKey="warn-end" label="Quiet End HH:MM (24hr)" type="text" />
       </Section>
@@ -269,6 +284,8 @@ function HelloWorld(props) {
       <Text align="left" bold>1.4</Text>
         <Text>Added long period alarm warnings after "BG difference notification" configuration.</Text>
         <Text>Fixed problem where Comm Warning Suppression would be lost after restart.</Text>
+      <Text align="left" bold>1.5</Text>
+        <Text>Added Nightscout token support.</Text>
       </Section>
 
     </Page>
