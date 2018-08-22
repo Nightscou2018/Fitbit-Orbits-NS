@@ -128,6 +128,7 @@ export default class Graph {
    this._tHighLine.x2 = this._id.width;
     this._tHighLine.style.display = "inline";
     this._tHighLine.style.fill = this._highColor;
+    console.log(`high line at ${this._tHigh}`);
   }
   if (this._tLow >= this._ymin && this._tLow <= this._ymax) {
    this._tLowLine.y1 = this._id.height - ((this._tLow-this._ymin) / this._yscale);
@@ -136,6 +137,7 @@ export default class Graph {
    this._tLowLine.x2 = this._id.width;
     this._tLowLine.style.display = "inline";
     this._tLowLine.style.fill = this._lowColor;
+    console.log(`low line at ${this._tLow}`);
   }
   if (this._tUrgentHigh <= this._ymax && this._tUrgentHigh >= this._ymin) {
    this._tUrgentHighLine.y1 = this._id.height - ((this._tUrgentHigh-this._ymin) / this._yscale);
@@ -144,6 +146,7 @@ export default class Graph {
    this._tUrgentHighLine.x2 = this._id.width;
     this._tUrgentHighLine.style.display = "inline";
     this._tUrgentHighLine.style.fill = this._urgentHighColor;
+    console.log(`Urgent high line at ${this._tUrgentHigh}`);
   }
   if (this._tUrgentLow >= this._ymin && this._tLow <= this._ymax) {
    this._tUrgentLowLine.y1 = this._id.height - ((this._tUrgentLow-this._ymin) / this._yscale);
@@ -152,6 +155,7 @@ export default class Graph {
    this._tUrgentLowLine.x2 = this._id.width;
     this._tUrgentLowLine.style.display = "inline";
     this._tUrgentLowLine.style.fill = this._urgentLowColor;
+    console.log(`Urgent low line at ${this._tUrgentLow}`);
   }
 
   let firstDate = v[0].date;
@@ -185,6 +189,10 @@ export default class Graph {
    for (var index = 0; index < this._vals.length; index++) {
      this._vals[index].style.display = "none";
    }
+   this._tHighLine.style.display = "none";
+   this._tLowLine.style.display = "none";
+   this._tUrgentHighLine.style.display = "none";
+   this._tUrgentLowLine.style.display = "none";
  }
 
 };
