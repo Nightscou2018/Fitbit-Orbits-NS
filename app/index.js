@@ -169,6 +169,8 @@ let bgNext = 0;
 let bgNextStart = 0;
 let bgDelta = 0;
 let bgLast = 0;
+let IOB = 0;
+let COB = 0;
 let bgFont1 = 40; // init.
 let bgFont2 = 40; // init.
 let calibration = false; // signals the latest values were due to calibration
@@ -178,7 +180,7 @@ let BGHigh = 0;
 let BGUrgentHigh = 0;
 let urgentLowColor = "";
 let lowColor = "";
-let inRangeColor = "";
+let inRangeColor = "white";
 let highColor = "";
 let urgentHighColor = "";
 let BGDiff = 0;
@@ -308,7 +310,11 @@ function updateClock() {
             sgv.text = bgValue.toString();
         }
         sgv.style.fontSize = bgFont1;
+  try {
         sgv.style.fill = bgRangeColor();
+  } catch(err) {
+    sgv.style.fill = "white";
+  }
         // Set opacity for how long it's been here
         let now = new Date();
         let age = now.getTime() - bgDate;
@@ -385,7 +391,6 @@ function inRange(start, end, now) {
   let s = (start.hours * 60) + start.minutes;
   let e = (end.hours * 60) + end.minutes;
   let n = (now.getHours() * 60) + now.getMinutes();
-console.log(`start=${s}, now=${n}, end=${e}`);
   
   if (s == e) {
     return false;
@@ -589,7 +594,9 @@ function longTimeCheck(now) {
   
   var i;
   let longTime = util.Min2ms(longPeriod);
-  for (i = 0 ; i < BG.length && (now.getTime() - BG[i].date) < longTime ; i++) {}
+  for (i = 0 ; i < BG.length && (now.getTime() - BG[i].date) < longTime ; i++) {
+    if (BG.cal) return; // abort if we cross a calibrarion
+  }
   try {
     let t = new Date(BG[i].date);
     if (Math.abs(bgValue - BG[i].sgv) > longDiff) {
@@ -661,10 +668,12 @@ messaging.peerSocket.onmessage = evt => {
                     
                 bgPeriod = evt.data.period;
                 bgDelta = evt.data.delta;
+                calibration = evt.data.calibration;
                 testLimits();
                 BG.unshift({
                     sgv: bgValue,
-                    date: bgDate
+                    date: bgDate,
+                    cal: calibration
                 });
                 console.log(`BG length = ${BG.length}`);
                 
@@ -693,15 +702,21 @@ messaging.peerSocket.onmessage = evt => {
                 delta = 0;
             }
 
-            calibration = evt.data.calibration;
+            var lastWasCalibrarion;
             if (calibration) {
               console.log("calibration");
 //                vibration.start("nudge-max");
+              if (!lastWasCalibrarion) {
                 vibNudge(now);
-            } else if (BGDiff > 0 && Math.abs(bgDelta) >= BGDiff) {
+              }
+              lastWasCalibrarion = true;
+            } else {
+              lastWasCalibrarion = false;
+              if (BGDiff > 0 && Math.abs(bgDelta) >= BGDiff) {
                 // Buzz if this is a "large" difference
                 vibNudge(now);
-            } else longTimeCheck(now);
+              } else longTimeCheck(now);
+            }
             nightScout(1); // obvously!
             break;
 
@@ -763,7 +778,6 @@ messaging.peerSocket.onmessage = evt => {
             BGUrgentHigh = evt.data.urgentHigh;
             BGDiff = evt.data.diff;
             urgentLowColor = evt.data.urgentLowColor;
-console.log(`urgentLowColor=${urgentLowColor}`);
             lowColor = evt.data.lowColor;
             inRangeColor = evt.data.inRangeColor;
             highColor = evt.data.highColor;
@@ -859,6 +873,11 @@ console.log(`urgentLowColor=${urgentLowColor}`);
               updateGraph(BG);
             }
             break;
+      case "iobcob":
+        IOB = evt.data.iob;
+        COB = evt.data.cob;
+        updateGraph(BG);
+        break;
     }
 
   // Received some type of message from companion - so comm is working
@@ -935,6 +954,8 @@ for (let i = 0; i < 8; i++) {
 let BGTimeout = 0;
 let BGLowSnooze = 0;
 let BGHighSnooze = 0;
+let BGUrgentLowSnooze = 0;
+let BGUrgentHighSnooze = 0;
 let BGgraphButton = document.getElementById("BGgraph");
 let suppressButton = document.getElementById("suppress");
 
@@ -946,6 +967,8 @@ function writeLimitsInfo() {
         BGUrgentHigh: BGUrgentHigh,
         lowSnooze: BGLowSnooze,
         highSnooze: BGHighSnooze,
+        urgentLowSnooze: BGUrgentLowSnooze,
+        urgentHighSnooze: BGUrgentHighSnooze,
         BGDiff: BGDiff
     }, "json");
 }
@@ -960,11 +983,13 @@ function BGSnooze(period) {
 
     let now = new Date();
 
-    if ((BGHigh > 0 && bgValue > BGHigh) ||
-        (BGUrgentHigh > 0 && bgValue > BGUrgentHigh)) {
+    if (BGUrgentLow > 0 && bgValue < BGUrgentLow) {
+        BGUrgentLowSnooze = now.getTime() + period * (60 * 1000);
+    } else if (BGUrgentHigh > 0 && bgValue > BGUrgentHigh) {
+        BGUrgentHighSnooze = now.getTime() + period * (60 * 1000);
+    } else if (BGHigh > 0 && bgValue > BGHigh) {
         BGHighSnooze = now.getTime() + period * (60 * 1000); // snooze in ms
-    } else if ((BGLow > 0 && bgValue < BGLow) ||
-               (BGUrgentLow > 0 && bgValue > BGUrgentLow)) {
+    } else if (BGLow > 0 && bgValue < BGLow) {
         BGLowSnooze = now.getTime() + period * (60 * 1000);
     }
     writeLimitsInfo();
@@ -974,6 +999,7 @@ function BGSnooze(period) {
 function dismissBG() {
 
     noteMess.style.display = "none";
+    noteMess.style.fill = "black";
     noteBG.style.display = "none";
     noteTime.style.display = "none";
     suppressButton.style.display = "none";
@@ -1006,6 +1032,7 @@ function snoozeBG() {
 }
 
 
+
 function warnBG() {
 
     if (bgValue == 0 || ((BGHigh == 0 || bgValue < BGHigh) && 
@@ -1016,41 +1043,58 @@ function warnBG() {
 
     let now = new Date();
     if (
-      (((BGHigh > 0 && bgValue > BGHigh) || (BGUrgentHigh > 0 && bgValue > BGUrgentHigh)) &&
-         now.getTime() < BGHighSnooze) ||
-      (((BGLow > 0 && bgValue < BGLow) || (BGUrgentLow > 0 && bgValue < BGUrgentLow)) &&
-         now.getTime() < BGLowSnooze)
+      ((BGHigh > 0 && bgValue > BGHigh) && now.getTime() < BGHighSnooze) ||
+      ((BGUrgentHigh > 0 && bgValue > BGUrgentHigh) && now.getTime() < BGUrgentHighSnooze) || 
+      ((BGLow > 0 && bgValue < BGLow) && now.getTime() < BGLowSnooze) ||
+      ((BGUrgentLow > 0 && bgValue < BGUrgentLow) && now.getTime() < BGUrgentLowSnooze)
     ) {
         return; // still snoozing...
     }
 
-    noteBG.style.fill = "black";
+  try{
+    noteBG.style.fill = bgRangeColor();
+  } catch(err) {
+    noteBG.style.fill = "white";
+  }
     noteBG.style.display = "inline";
     dismissButton.style.display = "none"; // in case it's showing
     snoozeButton.style.display = "none";
     noteTime.text = `${now.getHours()}:${util.zeroPad(now.getMinutes())}`;
     noteTime.style.display = "inline";
 
-    if ((BGHigh > 0 && bgValue > BGHigh) ||
-        (BGUrgentHigh > 0 && bgValue > BGUrgentHigh)) {
-        noteMess.text = `BG of ${bgValue} is higher than limit of ${BGHigh}`;
-    } else if ((BGLow > 0 && bgValue < BGLow) ||
-               (BGUrgentLow > 0 && bgValue < BGUrgentLow)) {
+    if (BGUrgentHigh > 0 && bgValue > BGUrgentHigh) {
+        noteMess.text = `BG of ${bgValue} is higher than urgent high limit of ${BGUrgentHigh}`;
+    } else
+    if (BGHigh > 0 && bgValue > BGHigh) {
+        noteMess.text = `BG of ${bgValue} is higher than high limit of ${BGHigh}`;
+    } else
+    if (BGUrgentLow > 0 && bgValue < BGUrgentLow) {
+        noteMess.text = `BG of ${bgValue} is lower than urgent limit of ${BGUrgentLow}`;
+    } else 
+    if (BGLow > 0 && bgValue < BGLow) {
         noteMess.text = `BG of ${bgValue} is lower than limit of ${BGLow}`;
     }
     noteMess.style.display = "inline";
-    noteMess.style.fill = bgRangeColor(); // Set the text to the appropriate color
+    noteMess.style.fill = "black"; // Set the text to the appropriate color
     console.log("warnBG");
     vibration.start("nudge-max");
     display.poke();
     BGTimeout = setTimeout(warnBG, 10 * 1000); // That was nice!  Do it again!
 
     BGgraphButton.onactivate = BGshowGraph;
-    BGgraphButton.style.fill = bgRangeColor();
+    BGgraphButton.style.fill = "black";
     BGgraphButton.style.display = "inline";
-    suppressButton.style.fill = bgRangeColor();
+    suppressButton.style.fill = "black";
     suppressButton.style.display = "inline";
     suppressButton.onactivate = snoozeBG;
+}
+
+
+/*
+ * Call Companion to get iob/cob data
+ */
+function getIOBCOB() {
+  
 }
 
 /*
@@ -1062,6 +1106,7 @@ function displayGraph() {
     showingGraph = true;
     if (BG.length >= 24) {
         myGraph.reset();
+        fetchCompanionData("iobcob");
         updateGraph(BG);
     } else {
         myGraph.reset();
@@ -1085,10 +1130,14 @@ function BGshowGraph() {
 function showAlarm(num) {
     let now = new Date();
 
+    currAlarm = num;
     noteBG.style.display = "inline";
+    noteBG.style.fill = "white";
     noteTime.text = `${alarms[num].value.hour}:${alarms[num].value.minute}`;
     noteTime.style.display = "inline";
+    dismissButton.style.fill = "black";
     dismissButton.style.display = "inline";
+    snoozeButton.style.fill = "black";
     snoozeButton.style.display = "inline";
 
     dismissButton.onactivate = dismissText;
@@ -1096,22 +1145,22 @@ function showAlarm(num) {
 
     if (typeof messages[num] == 'undefined' ||
         messages[num].value == "") {
-      noteMess.text = "";
+      noteMess.text = "<no text>";
     } else {
       noteMess.text = messages[num].value;
     }
+    noteMess.style.fill = "black";
     noteMess.style.display = "inline";
 
     // And a little nudge
     vibration.start("nudge-max");
     display.poke();
     currTimeout = setTimeout(alarmBuzz, 10 * 1000); // That was nice!  Do it again!
-    currAlarm = num;
 
     writeFileSync("snooze", {
         number: currAlarm,
         timeout: now.getTime(),
-        last: -1
+        last: currAlarm
     }, "json");
 }
 
@@ -1177,7 +1226,7 @@ function dismissText() {
     clearTimeout(currTimeout);
     currSnooze = 0;
     lastAlarm = currAlarm; // so we can get it back again, if needed
-    currAlarm = -1;
+//    currAlarm = -1;
 
     writeFileSync("snooze", {
         number: currAlarm,
@@ -1204,11 +1253,12 @@ function selectSnooze(index) {
     console.log(`curr Timeout Handle = ${timeouts[currAlarm]}`);
     
     console.log(`currAlarm=${currAlarm}`);
+    lastAlarm = currAlarm;
     
     writeFileSync("snooze", {
         number: currAlarm,
         timeout: currSnooze,
-        last: -1
+        last: lastAlarm
     }, "json");
     snoozeTimes.style.display = "none";
 }
@@ -1282,6 +1332,7 @@ function commSnooze(time) {
   }, "json");
 
   snoozeTimes.style.display = "none";
+  console.log(`lastalarm=${lastAlarm}`);
 }
 
 
@@ -1384,6 +1435,8 @@ try {
 // Read BG high and low snooze times
 let BGLowSnooze = 0;
 let BGHighSnooze = 0;
+let BGUrgentLowSnooze = 0;
+let BGUrgentHighSnooze = 0;
 try {
     m = readFileSync("BGLimits", "json");
     BGUrgentLow = m.BGUrgentLow;
@@ -1392,10 +1445,14 @@ try {
     BGUrgentHigh = m.BGUrgentHigh;
     BGLowSnooze = m.lowSnooze;
     BGHighSnooze = m.highSnooze;
+    BGUrgentLowSnooze = m.urgentLowSnooze;
+    BGUrgentHighSnooze = m.urgentHighSnooze;
     BGDiff = m.BGDiff;
 } catch (err) {
     BGLowSnooze = 0;
     BGHighSnooze = 0;
+    BGUrgentLowSnooze = 0;
+    BGUrgentHighSnooze = 0;
     BGUrgentLow = 0;
     BGLow = 0;
     BGHigh = 0;
@@ -1458,6 +1515,9 @@ let graphMinAt = graphWindow.getElementById("graphMinAt");
 let graphMaxAt = graphWindow.getElementById("graphMaxAt");
 let graphStartAt = graphWindow.getElementById("graphStartAt");
 let graphEndAt = graphWindow.getElementById("graphEndAt");
+let graphIOB = graphWindow.getElementById("graphIOB");
+let graphCOB = graphWindow.getElementById("graphCOB");
+
 let graphDismiss = graphWindow.getElementById("GraphDismiss");
 let graphReturn = 0; // what todo after display of the graph
 
@@ -1540,6 +1600,9 @@ function updateGraph(data) {
     graphMaxAt.text = `${hourMin(maxAt)}`;
     graphStartAt.text = `Start: ${data[data.length-1].sgv}`;
     graphEndAt.text = `End: ${data[0].sgv}`;
+    graphIOB.text = `${IOB}`;
+    graphCOB.text = `${COB}`;
+
     // Set the graph scale
     myGraph.setYRange(min, max);
     myGraph.setUrgentLowLimit(BGUrgentLow);
@@ -1604,10 +1667,12 @@ for (let i = 0; i < menuItemClass.length ; i++) {
 
 function menu1click(string) {
 
+  console.log(`string is ${string} lastalarm=${lastAlarm}`);
   switch (string) {
     case "Redo last alarm":
       if (lastAlarm >= 0) {
         currAlarm = lastAlarm;
+console.log(`Redo alarm ${lastAlarm}`);
         timeouts[currAlarm] = 0;
         currSnooze = 0;
         runAlarmNow(1);
@@ -1717,6 +1782,24 @@ function suppressionsText() {
     didSome = true;
   }
 
+  let urgentLowBGSuppress = BGUrgentLowSnooze - now.getTime();
+  if (BGUrgentLowSnooze && lowUrgentBGSuppress > 0) {
+     if (noteMess.text != "") {
+       noteMesa.text += "\n";
+     }
+    noteMess.text = `Low BG: ${Math.floor(urgentLowBGSuppress / (60*1000))} mins`;
+    didSome = true;
+  }
+
+  let urgentHighBGSuppress = BGUrgentHighSnooze - now.getTime();
+  if (BGUrgentHighSnooze && urgentHighGSuppress > 0) {
+     if (noteMess.text != "") {
+       noteMesa.text += "\n";
+     }
+    noteMess.text = `Low BG: ${Math.floor(urgentHighBGSuppress / (60*1000))} mins`;
+    didSome = true;
+  }
+
   if (commSnoozeEnd > now.getTime()) {
      if (noteMess.text != "") {
        noteMess.text += "\n";
@@ -1752,6 +1835,8 @@ function suppressionsText() {
 function cancelSuppressions() {
   BGHighSnooze = 0;
   BGLowSnooze = 0;
+  BGUrgentHighSnooze = 0;
+  BGUrgentLowSnooze = 0;
   commSnoozeEnd = 0;
 
   menuExit();
@@ -1788,7 +1873,7 @@ try {
     
     currAlarm = m.number;
     let timeout = m.timeout;
-    if (currAlarm != -1) {
+    if (currAlarm != -1 && timeout > now.getTime()) {
         // Make sure we reinvoke this alarm in the short future
         if ((timeout - now.getTime()) <= 5000) {
           timeout = now.getTime() + 5000;

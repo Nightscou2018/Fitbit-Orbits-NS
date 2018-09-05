@@ -83,7 +83,12 @@ function HelloWorld(props) {
         <TextInput label="Font size for BG number" settingsKey="bgFont1" type="text" />
         <Text>The following colors may be used in order change the color of the BG number under
           the circumstances mentioned.  This may allow the range to be more quickly determined,
-          especially if sight is hampered by blurriness (such as in the morning).</Text>
+          especially if sight is hampered by blurriness (such as in the morning).
+          The color is also used when displaying a BG warning message.</Text>
+        <Text>(All 'Web Standard' color names should work.  Names should be only lower-case
+          and names should not have a space, e.g. "lightgreen".
+          Keep in mind the color should contrast well against black.
+          If the color isn't recognized, then white will be used instead.)</Text>
       <TextInput label="Urgent Low Color" settingsKey="urgentLowColor" type="text"/>
       <TextInput label="Low Color" settingsKey="lowColor" type="text"/>
       <TextInput label="In Range Color" settingsKey="inRangeColor" type="text"/>
@@ -285,7 +290,10 @@ function HelloWorld(props) {
         <Text>Added long period alarm warnings after "BG difference notification" configuration.</Text>
         <Text>Fixed problem where Comm Warning Suppression would be lost after restart.</Text>
       <Text align="left" bold>1.5</Text>
-        <Text>Added Nightscout token support.</Text>
+        <Text>Added Nightscout token support.  Added automatic watch face display turn on when alarms happen.</Text>
+      <Text align="left" bold>1.6</Text>
+        <Text>Added colors for "Urgent High", "High", "Low" and "Urgent Low".
+          Also added "Urgent High" and "Urgent Low" ranges numbers.</Text>
       </Section>
 
     </Page>

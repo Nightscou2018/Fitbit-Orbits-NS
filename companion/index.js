@@ -212,6 +212,46 @@ function formatUpdateData() {
      sendData(lastbg, lastdate, lastperiod, lastdelta, bgNext, false);
 }
 
+function sendIOBCOB(data) {
+  
+  console.log(`iob=${data.bgs[0].iob} cob=${data.bgs[0].cob}`);
+  if (messaging.peerSocket.readyState === messaging.peerSocket.OPEN) {
+      console.log(`Sending IOB/COB data... `);
+      messaging.peerSocket.send({
+        key: "iobcob",
+        iob: data.bgs[0].iob,
+        cob: data.bgs[0].cob
+      });
+  } else {
+      console.log("No peerSocket connection");
+  }  
+  gettingIOBCOB = false; // done
+}
+
+let gettingIOBCOB = false;
+function getIOBCOB() {
+  if (gettingIOBCOB) return; // Don't do this twice overlapping
+  gettingIOBCOB = true;
+  
+  let url = getIOBCOBURL()
+  let now = new Date();
+
+  console.log(url);
+
+  return fetch(url)
+  .then(function (response) {
+     return response.json()
+      .then(function(data) {
+//        returnGraphData(data);
+       sendIOBCOB(data);
+     });
+  })
+  .catch(function (err) {
+    console.log("Error fetching " + err);
+    gettingIOBCOB = false; // error, so we're done
+  });
+}
+
 
 // Listen for messages from the device
 messaging.peerSocket.onmessage = function(evt) {
@@ -232,6 +272,10 @@ messaging.peerSocket.onmessage = function(evt) {
 
       case "graph":
         getGraphData();
+        break;
+
+      case "iobcob":
+        getIOBCOB();
         break;
     }
 }
@@ -686,6 +730,14 @@ function getGraphURL() {
   return (URL);
 }
 
+function getIOBCOBURL() {
+  let URL = baseURL + "/pebble";
+  if (URLtoken != "") {
+    URL += "?token=" + URLtoken;
+  }
+  return (URL);
+}
+
 
 
 let fetchTimeoutHandle=0;
@@ -723,7 +775,7 @@ function setUpdateInterval() {
       bgNext = now.getTime() + minUpdate * 60 * 1000;      
     }
 */
-    bgNext += 10 * 1000; // and add 10 sec's to avoid race conditions
+    bgNext += Math.floor((Math.random() * 10) * 1000); // and about 10 sec's to avoid race conditions
     let m = (bgNext - now.getTime()) / 60000;
     
     console.log(`Need wakeup in ${m} mins`);
@@ -883,7 +935,7 @@ try {
   console.log(`urgentLowColor=${urgentLowColor}`);
 }
 catch(err) {
-  urgentLowColor = "";
+  urgentLowColor = "white";
 }
 
 console.log("at bglow");
@@ -899,7 +951,7 @@ try {
   console.log(`lowColor=${lowColor}`);
 }
 catch(err) {
-  lowColor = "";
+  lowColor = "white";
 }
 
 try {
@@ -907,7 +959,7 @@ try {
   console.log(`inRangeColor=${inRangeColor}`);
 }
 catch(err) {
-  inRangeColor = "";
+  inRangeColor = "white";
 }
 
 console.log("at bghigh");
@@ -923,7 +975,7 @@ try {
   console.log(`highColor=${highColor}`);
 }
 catch(err) {
-  highColor = "";
+  highColor = "white";
 }
 
 console.log("at bgurgenthigh");
@@ -939,7 +991,7 @@ try {
   console.log(`urgentHighColor=${urgentHighColor}`);
 }
 catch(err) {
-  urgentLowColor = "";
+  urgentHighColor = "white";
 }
 
 console.log("at bgdiff");
@@ -1064,6 +1116,8 @@ catch(err) {
 }
 
 console.log("All other initialization depends upon comm channel coming up.");
+console.log(`random is ${Math.random()}`);
+
 //me.onWakeInterval = () => onWakeup();
 //me.wakeInterval = 10 * 60 * 1000;
 

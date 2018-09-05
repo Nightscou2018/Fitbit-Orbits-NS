@@ -30,6 +30,7 @@ export default class Graph {
    this._highColor = "white";
    this._urgentLowColor = "white";
    this._lowColor = "white";
+   this._inRangeColor = "white";
    
    this._tHighLine = this._id.getElementById("tHigh");
    this._tLowLine = this._id.getElementById("tLow");
@@ -169,6 +170,11 @@ export default class Graph {
     let diff = v[i].date-lastDate;
     diff = diff / xRange;
     this._vals[index].cx = diff * this._id.width;
+    if (v[i].cal) {
+      this._vals[index].r = 4;
+    } else {
+      this._vals[index].r = 2;
+    }
     this._vals[index].style.fill = this.setColor(v[i].sgv);
     this._vals[index].style.display = "inline";
   }
@@ -177,11 +183,20 @@ export default class Graph {
  }
 
  setColor(v) {
-  if (v > this._tUrgentHigh) return this._urgentHighColor;
-  if (v > this._tHigh) return this._highColor;
-  if (v < this._tUrgentLow) return this._urgentLowColor;
-  if (v < this._tLow) return this._lowColor;
-  return this._inRangeColor;
+  var c;
+   
+  if (this._tUrgentHigh > 0 && v > this._tUrgentHigh) {
+    c =  this._urgentHighColor;
+  } else if (this._tHigh > 0 && v > this._tHigh) {
+    c =  this._highColor;
+  } else if (this._tUrgentLow > 0 && v < this._tUrgentLow) {
+    c =  this._urgentLowColor;
+  } else if (this._tLow > 0 && v < this._tLow) {
+    c =  this._lowColor;
+  } else {
+    c = this._inRangeColor;
+  }
+   return(c);
  }
 
  reset(){
